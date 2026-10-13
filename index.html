@@ -127,6 +127,7 @@
   <section>
     <h2>Nhật ký</h2>
     <div id="log"></div>
+    <button id="b-copy">Sao chép nhật ký<small>Để dán gửi khi cần hỗ trợ</small></button>
   </section>
 
   <p class="note">Nếu thông báo hiện trên iPhone mà đồng hồ không rung, vào Mibro Fit, mục thông báo, và kiểm tra app “Rẽ” có được chuyển sang đồng hồ không.</p>
@@ -293,23 +294,27 @@ function getPos(){
       { enableHighAccuracy: true, timeout: 15000 });
   });
 }
+let slowTimer = null;
 async function startRoute(extra){
   busy(true);
   try {
     setStatus('Đang lấy vị trí hiện tại…', 'busy');
     const from = await getPos();
     setStatus('Đang tạo lộ trình…', 'busy');
+    slowTimer = setTimeout(() => setStatus('Server vẫn đang xử lý, có thể mất thêm vài chục giây…', 'busy'), 8000);
     const out = await call('route', Object.assign({ from, profile: $('f-profile').value }, extra));
     const msg = `Đã tạo lộ trình tới “${out.dest}”: ${(out.total_m/1000).toFixed(1)} km, ${out.steps.length} bước. Đồng hồ sẽ nhận thông báo BẮT ĐẦU.`;
     setStatus(msg, 'okk');
     log(msg + (out.resolved_from ? ` (nguồn: ${out.resolved_from})` : ''));
+    if (out.timing) log('Thời gian (ms): ' + JSON.stringify(out.timing));
+    if (out.debug) log('Chi tiết: ' + out.debug.join(' | '));
     $('cands').textContent = '';
     renderSteps(out.steps);
     $('steps').scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch(e){
     const msg = 'Lỗi tạo lộ trình: ' + friendly(e);
     setStatus(msg, 'err'); log(msg + ' | ' + (e && e.message || e));
-  } finally { busy(false); }
+  } finally { clearTimeout(slowTimer); busy(false); }
 }
 $('b-go').onclick = async () => {
   const text = $('f-dest').value.trim();
@@ -321,9 +326,12 @@ $('b-go').onclick = async () => {
     setStatus('Đang lấy vị trí hiện tại…', 'busy');
     const from = await getPos();
     setStatus('Đang tìm “' + text + '”…', 'busy');
+    slowTimer = setTimeout(() => setStatus('Server vẫn đang tìm, vui lòng chờ thêm…', 'busy'), 8000);
     const out = await call('route', { action: 'search', text, from });
+    if (out.debug) log('Chi tiết tìm: ' + out.debug.join(' | '));
+    if (out.timing) log('Thời gian (ms): ' + JSON.stringify(out.timing));
     if (!out.results || !out.results.length) {
-      setStatus('Không tìm thấy địa điểm nào cho “' + text + '”. Thử gõ cách khác hoặc dán link Google Maps.', 'err');
+      setStatus('Không tìm thấy địa điểm nào cho “' + text + '”. Xem Nhật ký để biết nguồn nào lỗi, hoặc thử gõ cách khác.', 'err');
       log('Tìm “' + text + '”: không có kết quả.');
       return;
     }
@@ -341,11 +349,16 @@ $('b-go').onclick = async () => {
   } catch(e){
     const msg = 'Lỗi tìm kiếm: ' + friendly(e);
     setStatus(msg, 'err'); log(msg + ' | ' + (e && e.message || e));
-  } finally { busy(false); }
+  } finally { clearTimeout(slowTimer); busy(false); }
 };
 $('b-stop').onclick = async () => {
   try { await call('route', { action: 'stop' }); log('Đã dừng chỉ đường.'); $('steps').textContent = ''; }
   catch(e){ log('Lỗi: ' + e.message); }
+};
+
+$('b-copy').onclick = async () => {
+  try { await navigator.clipboard.writeText(logEl.textContent); log('Đã sao chép nhật ký.'); }
+  catch(e){ log('Không sao chép được: ' + e.message); }
 };
 
 /* ---------- Giữ màn hình sáng ---------- */
