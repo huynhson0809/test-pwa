@@ -19,7 +19,7 @@
   *{box-sizing:border-box}
   html,body{margin:0;background:var(--bg);color:var(--text);
     font:16px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif}
-  main{max-width:520px;margin:0 auto;padding:max(20px,env(safe-area-inset-top)) 20px 40px}
+  main{max-width:520px;margin:0 auto;padding:max(20px,env(safe-area-inset-top)) 20px 60px}
   h1{font-size:28px;line-height:1.15;margin:8px 0 4px;letter-spacing:-.01em}
   .sub{color:var(--muted);margin:0 0 24px}
   .sign{display:flex;align-items:center;gap:18px;background:var(--panel);
@@ -27,27 +27,35 @@
   .sign .arrow{font-size:64px;line-height:1;color:var(--sign);font-weight:700;min-width:64px;text-align:center}
   .sign .dist{font-size:34px;font-weight:700;line-height:1.1}
   .sign .what{color:var(--muted)}
-  section{margin:0 0 22px}
+  section{margin:0 0 26px}
   h2{font-size:15px;margin:0 0 8px;color:var(--muted);font-weight:600}
   .state{display:grid;grid-template-columns:1fr auto;gap:6px 12px;font-size:15px}
   .state div:nth-child(even){text-align:right;font-weight:600}
   .ok{color:var(--ok)} .bad{color:var(--bad)}
-  button{width:100%;padding:15px 16px;margin:0 0 10px;border-radius:12px;border:1px solid var(--line);
+  label{display:block;font-size:14px;color:var(--muted);margin:10px 0 4px}
+  input,select{width:100%;padding:13px 14px;border-radius:12px;border:1px solid var(--line);
+    background:#0B0E11;color:var(--text);font:inherit}
+  input:focus-visible,select:focus-visible{outline:3px solid #fff;outline-offset:2px}
+  button{width:100%;padding:15px 16px;margin:10px 0 0;border-radius:12px;border:1px solid var(--line);
     background:var(--panel);color:var(--text);font:inherit;font-weight:600;text-align:left}
   button.primary{background:var(--sign);color:#1A1300;border-color:var(--sign)}
   button:disabled{opacity:.45}
   button:focus-visible{outline:3px solid #fff;outline-offset:2px}
   small{display:block;color:var(--muted);font-weight:400;margin-top:2px}
+  button.primary small{color:#4A3600}
+  ol#steps{margin:12px 0 0;padding-left:22px;font-size:15px}
+  ol#steps li{margin:3px 0}
+  ol#steps span{color:var(--muted)}
   #log{background:#0B0E11;border:1px solid var(--line);border-radius:12px;padding:12px 14px;
     font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;color:#C5CED6;min-height:90px;
-    max-height:220px;overflow:auto;white-space:pre-wrap}
+    max-height:240px;overflow:auto;white-space:pre-wrap}
   .note{font-size:14px;color:var(--muted)}
 </style>
 </head>
 <body>
 <main>
   <h1>Rẽ trên cổ tay</h1>
-  <p class="sub">Kiểm tra xem đồng hồ có hiện thông báo chỉ đường từ trang này không.</p>
+  <p class="sub">Gửi chỉ dẫn rẽ sang đồng hồ bằng thông báo.</p>
 
   <div class="sign" aria-live="polite">
     <div class="arrow" id="arrow">↱</div>
@@ -63,17 +71,48 @@
       <div>Đã thêm vào Màn hình chính</div><div id="s-install">…</div>
       <div>Quyền thông báo</div><div id="s-perm">…</div>
       <div>Service worker</div><div id="s-sw">…</div>
+      <div>Đăng ký push</div><div id="s-push">Chưa</div>
       <div>Giữ màn hình sáng</div><div id="s-wake">Tắt</div>
     </div>
   </section>
 
   <section>
-    <h2>Các bước thử</h2>
-    <button id="b-perm" class="primary">1. Cho phép thông báo<small>Chỉ hiện được sau khi đã thêm vào Màn hình chính</small></button>
-    <button id="b-now">2. Gửi một thông báo ngay<small>Thử xem đồng hồ có rung và hiện chữ không</small></button>
-    <button id="b-delay">3. Gửi sau 10 giây<small>Bấm rồi thoát ra Màn hình chính, giữ màn hình sáng</small></button>
-    <button id="b-seq">4. Chạy thử chỉ đường mẫu<small>3 thông báo cách nhau 8 giây: 350 m, 100 m, rẽ ngay</small></button>
-    <button id="b-wake">Giữ màn hình sáng<small>Để điện thoại không tự khóa khi đang thử</small></button>
+    <h2>1. Kết nối tới Supabase</h2>
+    <label for="f-url">Địa chỉ project (https://xxxx.supabase.co)</label>
+    <input id="f-url" type="url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <label for="f-secret">Mật khẩu (APP_SECRET)</label>
+    <input id="f-secret" type="password" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <label for="f-vapid">VAPID public key</label>
+    <input id="f-vapid" type="text" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <button id="b-save">Lưu cấu hình<small>Lưu trên máy này, không gửi đi đâu</small></button>
+  </section>
+
+  <section>
+    <h2>2. Thử thông báo</h2>
+    <button id="b-perm" class="primary">Cho phép thông báo<small>Chỉ hiện được sau khi đã thêm vào Màn hình chính</small></button>
+    <button id="b-now">Gửi thông báo cục bộ ngay<small>Chạy trên máy, không qua server</small></button>
+    <button id="b-glyph">Thử ký tự mũi tên<small>Xem đồng hồ hiện được ký tự nào</small></button>
+    <button id="b-sub">Đăng ký push với server<small>Làm một lần sau khi đã cho phép thông báo</small></button>
+    <button id="b-push">Gửi push thử từ server sau 15 giây<small>Bấm rồi thoát hẳn app, chờ xem đồng hồ có rung không</small></button>
+  </section>
+
+  <section>
+    <h2>3. Chỉ đường</h2>
+    <label for="f-dest">Điểm đến</label>
+    <input id="f-dest" type="text" placeholder="Ví dụ: Chợ Bến Thành" autocapitalize="off" spellcheck="false">
+    <label for="f-profile">Phương tiện</label>
+    <select id="f-profile">
+      <option value="driving-car">Xe máy / ô tô</option>
+      <option value="cycling-regular">Xe đạp</option>
+      <option value="foot-walking">Đi bộ</option>
+    </select>
+    <button id="b-go" class="primary">Bắt đầu chỉ đường<small>Lấy vị trí hiện tại làm điểm xuất phát</small></button>
+    <button id="b-stop">Dừng chỉ đường</button>
+    <ol id="steps"></ol>
+  </section>
+
+  <section>
+    <button id="b-wake">Giữ màn hình sáng<small>Hữu ích khi thử trong lúc PWA đang mở</small></button>
   </section>
 
   <section>
@@ -81,7 +120,7 @@
     <div id="log"></div>
   </section>
 
-  <p class="note">Mẹo: nếu thông báo hiện trên iPhone mà đồng hồ không rung, vào Mibro Fit và kiểm tra mục thông báo của app, xem trang này (hoặc “Rẽ”) có trong danh sách được chuyển sang đồng hồ không.</p>
+  <p class="note">Nếu thông báo hiện trên iPhone mà đồng hồ không rung, vào Mibro Fit, mục thông báo, và kiểm tra app “Rẽ” có được chuyển sang đồng hồ không.</p>
 </main>
 
 <script>
@@ -92,10 +131,43 @@ function log(msg){
   logEl.textContent += `[${t}] ${msg}\n`;
   logEl.scrollTop = logEl.scrollHeight;
 }
-function setState(id, text, cls){
-  const el = $(id); el.textContent = text; el.className = cls || '';
+function setState(id, text, cls){ const el = $(id); el.textContent = text; el.className = cls || ''; }
+
+/* ---------- Cấu hình ---------- */
+function cfg(){
+  return {
+    url: (localStorage.getItem('rw_url') || '').trim().replace(/\/$/, ''),
+    secret: localStorage.getItem('rw_secret') || '',
+    vapid: (localStorage.getItem('rw_vapid') || '').trim()
+  };
+}
+(function loadCfg(){
+  const c = cfg();
+  $('f-url').value = c.url; $('f-secret').value = c.secret; $('f-vapid').value = c.vapid;
+})();
+$('b-save').onclick = () => {
+  localStorage.setItem('rw_url', $('f-url').value.trim());
+  localStorage.setItem('rw_secret', $('f-secret').value);
+  localStorage.setItem('rw_vapid', $('f-vapid').value.trim());
+  log('Đã lưu cấu hình.');
+};
+
+async function call(fn, body){
+  const c = cfg();
+  if (!c.url || !c.secret) { log('Chưa nhập địa chỉ project hoặc mật khẩu.'); throw new Error('thiếu cấu hình'); }
+  const r = await fetch(`${c.url}/functions/v1/${fn}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-app-secret': c.secret },
+    body: JSON.stringify(body || {}),
+    keepalive: true
+  });
+  const text = await r.text();
+  let data; try { data = JSON.parse(text); } catch { data = text; }
+  if (!r.ok) throw new Error(r.status + ' ' + (typeof data === 'string' ? data : JSON.stringify(data)));
+  return data;
 }
 
+/* ---------- Trạng thái ---------- */
 const standalone = window.navigator.standalone === true ||
                    matchMedia('(display-mode: standalone)').matches;
 setState('s-install', standalone ? 'Có' : 'Chưa', standalone ? 'ok' : 'bad');
@@ -108,44 +180,102 @@ async function initSW(){
     reg = await navigator.serviceWorker.register('./sw.js');
     await navigator.serviceWorker.ready;
     setState('s-sw','Sẵn sàng','ok');
+    refreshPush();
   } catch(e){ setState('s-sw','Lỗi','bad'); log('Lỗi service worker: ' + e.message); }
 }
 function refreshPerm(){
   if (!('Notification' in window)) { setState('s-perm','Không hỗ trợ','bad'); return; }
-  const p = Notification.permission;
   const map = { granted:['Đã cho phép','ok'], denied:['Bị từ chối','bad'], default:['Chưa hỏi',''] };
-  setState('s-perm', map[p][0], map[p][1]);
+  const p = map[Notification.permission];
+  setState('s-perm', p[0], p[1]);
+}
+async function refreshPush(){
+  if (!reg || !reg.pushManager) return;
+  const sub = await reg.pushManager.getSubscription();
+  setState('s-push', sub ? 'Có' : 'Chưa', sub ? 'ok' : '');
 }
 initSW(); refreshPerm();
 
+/* ---------- Thông báo cục bộ ---------- */
 async function ask(){
   if (!('Notification' in window)) { log('Trình duyệt này không có Notification API.'); return; }
   const r = await Notification.requestPermission();
   log('Quyền thông báo: ' + r); refreshPerm();
 }
-
-function show(title, body, arrow, dist, what){
-  if (arrow) { $('arrow').textContent = arrow; $('dist').textContent = dist; $('what').textContent = what; }
+function showSign(arrow, dist, what){ $('arrow').textContent = arrow; $('dist').textContent = dist; $('what').textContent = what; }
+function show(title, body){
   if (!reg || Notification.permission !== 'granted') { log('Chưa có quyền hoặc service worker.'); return Promise.resolve(); }
-  return reg.showNotification(title, {
-    body, tag: 'turn', renotify: true, icon: 'icon-192.png', lang: 'vi'
-  }).then(() => log('Đã gửi: ' + title + ' | ' + body))
+  return reg.showNotification(title, { body, tag: 'turn', renotify: true, icon: 'icon-192.png', lang: 'vi' })
+    .then(() => log('Đã gửi: ' + title + ' | ' + body))
     .catch(e => log('Lỗi gửi: ' + e.message));
 }
-
 $('b-perm').onclick = ask;
-$('b-now').onclick = () => show('↱ 350 m', 'Rẽ phải vào Đường Số 2', '↱', '350 m', 'Rẽ phải vào Đường Số 2');
-$('b-delay').onclick = () => {
-  log('Hẹn 10 giây. Hãy thoát ra Màn hình chính nhưng giữ màn hình sáng.');
-  setTimeout(() => show('↰ 200 m', 'Rẽ trái vào Nguyễn Văn Linh', '↰', '200 m', 'Rẽ trái vào Nguyễn Văn Linh'), 10000);
+$('b-now').onclick = () => { showSign('↱','350 m','Rẽ phải vào Đường Số 2'); show('PHẢI 350 m', 'Rẽ phải vào Đường Số 2'); };
+$('b-glyph').onclick = () => show('Thử ký tự',
+  'A: ← → ↑ ↓\nB: ◀ ▶ ▲ ▼\nC: ⬅ ➡ ⬆ ⬇\nD: ↰ ↱ ↶ ↷\nE: << >> ^ v\nF: ⇦ ⇨ ⇧ ⇩');
+
+/* ---------- Push từ server ---------- */
+function urlB64ToUint8Array(b64){
+  const pad = '='.repeat((4 - b64.length % 4) % 4);
+  const s = (b64 + pad).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(s);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+$('b-sub').onclick = async () => {
+  try {
+    if (!reg) { log('Service worker chưa sẵn sàng.'); return; }
+    if (Notification.permission !== 'granted') await ask();
+    if (Notification.permission !== 'granted') return;
+    const c = cfg();
+    if (!c.vapid) { log('Chưa nhập VAPID public key.'); return; }
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8Array(c.vapid) });
+      log('Đã tạo đăng ký push mới.');
+    }
+    await call('subscribe', sub.toJSON());
+    log('Đã gửi đăng ký lên server.');
+    refreshPush();
+  } catch(e){ log('Lỗi đăng ký push: ' + e.message); }
 };
-$('b-seq').onclick = () => {
-  log('Bắt đầu chỉ đường mẫu (cần để trang mở, màn hình sáng).');
-  show('↱ 350 m', 'Rẽ phải vào Đường Số 2', '↱', '350 m', 'Rẽ phải vào Đường Số 2');
-  setTimeout(() => show('↱ 100 m', 'Rẽ phải vào Đường Số 2', '↱', '100 m', 'Rẽ phải vào Đường Số 2'), 8000);
-  setTimeout(() => show('↱ Rẽ ngay', 'Rẽ phải vào Đường Số 2', '↱', 'Rẽ ngay', 'Rẽ phải vào Đường Số 2'), 16000);
+$('b-push').onclick = async () => {
+  log('Yêu cầu server gửi push sau 15 giây. Hãy thoát hẳn app ngay.');
+  try { await call('push-test', { delay: 15 }); } catch(e){ log('Lỗi push thử: ' + e.message); }
 };
 
+/* ---------- Chỉ đường ---------- */
+function renderSteps(list){
+  const ol = $('steps'); ol.textContent = '';
+  list.forEach(s => {
+    const li = document.createElement('li');
+    li.textContent = s.text + ' ';
+    const sp = document.createElement('span');
+    sp.textContent = '(' + s.distance + ' m)';
+    li.appendChild(sp); ol.appendChild(li);
+  });
+}
+$('b-go').onclick = () => {
+  const dest = $('f-dest').value.trim();
+  if (!dest) { log('Hãy nhập điểm đến.'); return; }
+  if (!('geolocation' in navigator)) { log('Thiết bị không có định vị.'); return; }
+  log('Đang lấy vị trí hiện tại…');
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    try {
+      const out = await call('route', {
+        from: { lat: pos.coords.latitude, lng: pos.coords.longitude },
+        to: dest, profile: $('f-profile').value
+      });
+      log(`Đã tạo lộ trình tới "${out.dest}", ${(out.total_m/1000).toFixed(1)} km, ${out.steps.length} bước.`);
+      renderSteps(out.steps);
+    } catch(e){ log('Lỗi tạo lộ trình: ' + e.message); }
+  }, (err) => log('Không lấy được vị trí: ' + err.message), { enableHighAccuracy: true, timeout: 15000 });
+};
+$('b-stop').onclick = async () => {
+  try { await call('route', { action: 'stop' }); log('Đã dừng chỉ đường.'); $('steps').textContent = ''; }
+  catch(e){ log('Lỗi: ' + e.message); }
+};
+
+/* ---------- Giữ màn hình sáng ---------- */
 let wakeLock = null;
 $('b-wake').onclick = async () => {
   try {
