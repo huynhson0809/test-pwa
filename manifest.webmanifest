@@ -1,0 +1,16 @@
+{
+  "name": "Rẽ trên cổ tay",
+  "short_name": "Rẽ",
+  "description": "Thử gửi thông báo chỉ đường sang đồng hồ",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#101418",
+  "theme_color": "#101418",
+  "lang": "vi",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

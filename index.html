@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101418">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Rẽ">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>Rẽ trên cổ tay</title>
+<style>
+  :root{
+    --bg:#101418; --panel:#1A2128; --line:#2B3640; --text:#EDEFF1; --muted:#9AA7B2;
+    --sign:#FFB400; --ok:#5FD39A; --bad:#FF7A6B;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);
+    font:16px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif}
+  main{max-width:520px;margin:0 auto;padding:max(20px,env(safe-area-inset-top)) 20px 40px}
+  h1{font-size:28px;line-height:1.15;margin:8px 0 4px;letter-spacing:-.01em}
+  .sub{color:var(--muted);margin:0 0 24px}
+  .sign{display:flex;align-items:center;gap:18px;background:var(--panel);
+    border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:20px}
+  .sign .arrow{font-size:64px;line-height:1;color:var(--sign);font-weight:700;min-width:64px;text-align:center}
+  .sign .dist{font-size:34px;font-weight:700;line-height:1.1}
+  .sign .what{color:var(--muted)}
+  section{margin:0 0 22px}
+  h2{font-size:15px;margin:0 0 8px;color:var(--muted);font-weight:600}
+  .state{display:grid;grid-template-columns:1fr auto;gap:6px 12px;font-size:15px}
+  .state div:nth-child(even){text-align:right;font-weight:600}
+  .ok{color:var(--ok)} .bad{color:var(--bad)}
+  button{width:100%;padding:15px 16px;margin:0 0 10px;border-radius:12px;border:1px solid var(--line);
+    background:var(--panel);color:var(--text);font:inherit;font-weight:600;text-align:left}
+  button.primary{background:var(--sign);color:#1A1300;border-color:var(--sign)}
+  button:disabled{opacity:.45}
+  button:focus-visible{outline:3px solid #fff;outline-offset:2px}
+  small{display:block;color:var(--muted);font-weight:400;margin-top:2px}
+  #log{background:#0B0E11;border:1px solid var(--line);border-radius:12px;padding:12px 14px;
+    font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;color:#C5CED6;min-height:90px;
+    max-height:220px;overflow:auto;white-space:pre-wrap}
+  .note{font-size:14px;color:var(--muted)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Rẽ trên cổ tay</h1>
+  <p class="sub">Kiểm tra xem đồng hồ có hiện thông báo chỉ đường từ trang này không.</p>
+
+  <div class="sign" aria-live="polite">
+    <div class="arrow" id="arrow">↱</div>
+    <div>
+      <div class="dist" id="dist">350 m</div>
+      <div class="what" id="what">Rẽ phải vào Đường Số 2</div>
+    </div>
+  </div>
+
+  <section>
+    <h2>Tình trạng</h2>
+    <div class="state">
+      <div>Đã thêm vào Màn hình chính</div><div id="s-install">…</div>
+      <div>Quyền thông báo</div><div id="s-perm">…</div>
+      <div>Service worker</div><div id="s-sw">…</div>
+      <div>Giữ màn hình sáng</div><div id="s-wake">Tắt</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Các bước thử</h2>
+    <button id="b-perm" class="primary">1. Cho phép thông báo<small>Chỉ hiện được sau khi đã thêm vào Màn hình chính</small></button>
+    <button id="b-now">2. Gửi một thông báo ngay<small>Thử xem đồng hồ có rung và hiện chữ không</small></button>
+    <button id="b-delay">3. Gửi sau 10 giây<small>Bấm rồi thoát ra Màn hình chính, giữ màn hình sáng</small></button>
+    <button id="b-seq">4. Chạy thử chỉ đường mẫu<small>3 thông báo cách nhau 8 giây: 350 m, 100 m, rẽ ngay</small></button>
+    <button id="b-wake">Giữ màn hình sáng<small>Để điện thoại không tự khóa khi đang thử</small></button>
+  </section>
+
+  <section>
+    <h2>Nhật ký</h2>
+    <div id="log"></div>
+  </section>
+
+  <p class="note">Mẹo: nếu thông báo hiện trên iPhone mà đồng hồ không rung, vào Mibro Fit và kiểm tra mục thông báo của app, xem trang này (hoặc “Rẽ”) có trong danh sách được chuyển sang đồng hồ không.</p>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const logEl = $('log');
+function log(msg){
+  const t = new Date().toLocaleTimeString('vi-VN');
+  logEl.textContent += `[${t}] ${msg}\n`;
+  logEl.scrollTop = logEl.scrollHeight;
+}
+function setState(id, text, cls){
+  const el = $(id); el.textContent = text; el.className = cls || '';
+}
+
+const standalone = window.navigator.standalone === true ||
+                   matchMedia('(display-mode: standalone)').matches;
+setState('s-install', standalone ? 'Có' : 'Chưa', standalone ? 'ok' : 'bad');
+if (!standalone) log('Chưa mở từ Màn hình chính. Bấm Chia sẻ → Thêm vào MH chính, rồi mở từ biểu tượng.');
+
+let reg = null;
+async function initSW(){
+  if (!('serviceWorker' in navigator)) { setState('s-sw','Không hỗ trợ','bad'); return; }
+  try {
+    reg = await navigator.serviceWorker.register('./sw.js');
+    await navigator.serviceWorker.ready;
+    setState('s-sw','Sẵn sàng','ok');
+  } catch(e){ setState('s-sw','Lỗi','bad'); log('Lỗi service worker: ' + e.message); }
+}
+function refreshPerm(){
+  if (!('Notification' in window)) { setState('s-perm','Không hỗ trợ','bad'); return; }
+  const p = Notification.permission;
+  const map = { granted:['Đã cho phép','ok'], denied:['Bị từ chối','bad'], default:['Chưa hỏi',''] };
+  setState('s-perm', map[p][0], map[p][1]);
+}
+initSW(); refreshPerm();
+
+async function ask(){
+  if (!('Notification' in window)) { log('Trình duyệt này không có Notification API.'); return; }
+  const r = await Notification.requestPermission();
+  log('Quyền thông báo: ' + r); refreshPerm();
+}
+
+function show(title, body, arrow, dist, what){
+  if (arrow) { $('arrow').textContent = arrow; $('dist').textContent = dist; $('what').textContent = what; }
+  if (!reg || Notification.permission !== 'granted') { log('Chưa có quyền hoặc service worker.'); return Promise.resolve(); }
+  return reg.showNotification(title, {
+    body, tag: 'turn', renotify: true, icon: 'icon-192.png', lang: 'vi'
+  }).then(() => log('Đã gửi: ' + title + ' | ' + body))
+    .catch(e => log('Lỗi gửi: ' + e.message));
+}
+
+$('b-perm').onclick = ask;
+$('b-now').onclick = () => show('↱ 350 m', 'Rẽ phải vào Đường Số 2', '↱', '350 m', 'Rẽ phải vào Đường Số 2');
+$('b-delay').onclick = () => {
+  log('Hẹn 10 giây. Hãy thoát ra Màn hình chính nhưng giữ màn hình sáng.');
+  setTimeout(() => show('↰ 200 m', 'Rẽ trái vào Nguyễn Văn Linh', '↰', '200 m', 'Rẽ trái vào Nguyễn Văn Linh'), 10000);
+};
+$('b-seq').onclick = () => {
+  log('Bắt đầu chỉ đường mẫu (cần để trang mở, màn hình sáng).');
+  show('↱ 350 m', 'Rẽ phải vào Đường Số 2', '↱', '350 m', 'Rẽ phải vào Đường Số 2');
+  setTimeout(() => show('↱ 100 m', 'Rẽ phải vào Đường Số 2', '↱', '100 m', 'Rẽ phải vào Đường Số 2'), 8000);
+  setTimeout(() => show('↱ Rẽ ngay', 'Rẽ phải vào Đường Số 2', '↱', 'Rẽ ngay', 'Rẽ phải vào Đường Số 2'), 16000);
+};
+
+let wakeLock = null;
+$('b-wake').onclick = async () => {
+  try {
+    if (wakeLock) { await wakeLock.release(); wakeLock = null; setState('s-wake','Tắt'); log('Đã tắt giữ màn hình sáng.'); return; }
+    if (!('wakeLock' in navigator)) { log('Thiết bị không hỗ trợ Wake Lock.'); return; }
+    wakeLock = await navigator.wakeLock.request('screen');
+    setState('s-wake','Bật','ok'); log('Đã bật giữ màn hình sáng.');
+    wakeLock.addEventListener('release', () => { setState('s-wake','Tắt'); wakeLock = null; });
+  } catch(e){ log('Lỗi Wake Lock: ' + e.message); }
+};
+document.addEventListener('visibilitychange', () => log('Trang ' + (document.hidden ? 'bị ẩn' : 'hiện lại')));
+</script>
+</body>
+</html>
