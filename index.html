@@ -43,6 +43,8 @@
   button:focus-visible{outline:3px solid #fff;outline-offset:2px}
   small{display:block;color:var(--muted);font-weight:400;margin-top:2px}
   button.primary small{color:#4A3600}
+  #cands button{font-weight:500}
+  #cands button b{display:block}
   ol#steps{margin:12px 0 0;padding-left:22px;font-size:15px}
   ol#steps li{margin:3px 0}
   ol#steps span{color:var(--muted)}
@@ -91,22 +93,23 @@
     <h2>2. Thử thông báo</h2>
     <button id="b-perm" class="primary">Cho phép thông báo<small>Chỉ hiện được sau khi đã thêm vào Màn hình chính</small></button>
     <button id="b-now">Gửi thông báo cục bộ ngay<small>Chạy trên máy, không qua server</small></button>
-    <button id="b-glyph">Thử ký tự mũi tên<small>Xem đồng hồ hiện được ký tự nào</small></button>
+    <button id="b-glyph">Thử ký tự mũi tên<small>Bộ 2: mũi tên chéo, vòng, quay đầu</small></button>
     <button id="b-sub">Đăng ký push với server<small>Làm một lần sau khi đã cho phép thông báo</small></button>
     <button id="b-push">Gửi push thử từ server sau 15 giây<small>Bấm rồi thoát hẳn app, chờ xem đồng hồ có rung không</small></button>
   </section>
 
   <section>
     <h2>3. Chỉ đường</h2>
-    <label for="f-dest">Điểm đến</label>
-    <input id="f-dest" type="text" placeholder="Ví dụ: Chợ Bến Thành" autocapitalize="off" spellcheck="false">
+    <label for="f-dest">Điểm đến (tên địa điểm hoặc link Google Maps)</label>
+    <input id="f-dest" type="text" placeholder="Ví dụ: Chợ Bến Thành, hoặc dán link Google Maps" autocapitalize="off" spellcheck="false">
     <label for="f-profile">Phương tiện</label>
     <select id="f-profile">
       <option value="driving-car">Xe máy / ô tô</option>
       <option value="cycling-regular">Xe đạp</option>
       <option value="foot-walking">Đi bộ</option>
     </select>
-    <button id="b-go" class="primary">Bắt đầu chỉ đường<small>Lấy vị trí hiện tại làm điểm xuất phát</small></button>
+    <button id="b-go" class="primary">Tìm điểm đến<small>Gõ tên để chọn trong danh sách, hoặc dán link để đi luôn</small></button>
+    <div id="cands"></div>
     <button id="b-stop">Dừng chỉ đường</button>
     <ol id="steps"></ol>
   </section>
@@ -211,8 +214,8 @@ function show(title, body){
 }
 $('b-perm').onclick = ask;
 $('b-now').onclick = () => { showSign('↱','350 m','Rẽ phải vào Đường Số 2'); show('PHẢI 350 m', 'Rẽ phải vào Đường Số 2'); };
-$('b-glyph').onclick = () => show('Thử ký tự',
-  'A: ← → ↑ ↓\nB: ◀ ▶ ▲ ▼\nC: ⬅ ➡ ⬆ ⬇\nD: ↰ ↱ ↶ ↷\nE: << >> ^ v\nF: ⇦ ⇨ ⇧ ⇩');
+$('b-glyph').onclick = () => show('Thử ký tự 2',
+  'G: ↖ ↗ ↘ ↙\nH: ↺ ↻ ↩ ↪\nI: ⤴ ⤵ ↶ ↷\nJ: ⟲ ⟳ ⮌ ⮍\nK: ‹ › « »\nL: ↔ ↕ ⇄ ⇅');
 
 /* ---------- Push từ server ---------- */
 function urlB64ToUint8Array(b64){
@@ -254,21 +257,46 @@ function renderSteps(list){
     li.appendChild(sp); ol.appendChild(li);
   });
 }
-$('b-go').onclick = () => {
-  const dest = $('f-dest').value.trim();
-  if (!dest) { log('Hãy nhập điểm đến.'); return; }
-  if (!('geolocation' in navigator)) { log('Thiết bị không có định vị.'); return; }
-  log('Đang lấy vị trí hiện tại…');
-  navigator.geolocation.getCurrentPosition(async (pos) => {
-    try {
-      const out = await call('route', {
-        from: { lat: pos.coords.latitude, lng: pos.coords.longitude },
-        to: dest, profile: $('f-profile').value
-      });
-      log(`Đã tạo lộ trình tới "${out.dest}", ${(out.total_m/1000).toFixed(1)} km, ${out.steps.length} bước.`);
-      renderSteps(out.steps);
-    } catch(e){ log('Lỗi tạo lộ trình: ' + e.message); }
-  }, (err) => log('Không lấy được vị trí: ' + err.message), { enableHighAccuracy: true, timeout: 15000 });
+function getPos(){
+  return new Promise((resolve, reject) => {
+    if (!('geolocation' in navigator)) { reject(new Error('Thiết bị không có định vị.')); return; }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      (err) => reject(new Error('Không lấy được vị trí: ' + err.message)),
+      { enableHighAccuracy: true, timeout: 15000 });
+  });
+}
+async function startRoute(extra){
+  try {
+    log('Đang lấy vị trí hiện tại…');
+    const from = await getPos();
+    const out = await call('route', Object.assign({ from, profile: $('f-profile').value }, extra));
+    log(`Đã tạo lộ trình tới "${out.dest}", ${(out.total_m/1000).toFixed(1)} km, ${out.steps.length} bước.` +
+        (out.resolved_from ? ` (nguồn: ${out.resolved_from})` : ''));
+    $('cands').textContent = '';
+    renderSteps(out.steps);
+  } catch(e){ log('Lỗi tạo lộ trình: ' + e.message); }
+}
+$('b-go').onclick = async () => {
+  const text = $('f-dest').value.trim();
+  if (!text) { log('Hãy nhập điểm đến hoặc dán link Google Maps.'); return; }
+  $('cands').textContent = '';
+  if (/^https?:\/\//i.test(text)) { await startRoute({ gmaps: text }); return; }
+  try {
+    log('Đang tìm “' + text + '”…');
+    const from = await getPos();
+    const out = await call('route', { action: 'search', text, from });
+    if (!out.results || !out.results.length) { log('Không tìm thấy địa điểm nào. Thử gõ có dấu hoặc dán link Google Maps.'); return; }
+    out.results.forEach((c) => {
+      const b = document.createElement('button');
+      const t = document.createElement('b'); t.textContent = c.label;
+      const sm = document.createElement('small'); sm.textContent = 'cách bạn khoảng ' + c.dist_km + ' km' + (c.src ? ' - nguồn ' + c.src : '');
+      b.appendChild(t); b.appendChild(sm);
+      b.onclick = () => startRoute({ to: { lat: c.lat, lng: c.lng, label: c.label } });
+      $('cands').appendChild(b);
+    });
+    log('Chọn một địa điểm trong danh sách để bắt đầu.');
+  } catch(e){ log('Lỗi tìm kiếm: ' + e.message); }
 };
 $('b-stop').onclick = async () => {
   try { await call('route', { action: 'stop' }); log('Đã dừng chỉ đường.'); $('steps').textContent = ''; }
