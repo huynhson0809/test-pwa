@@ -280,6 +280,7 @@ function friendly(e){
   if (m.includes('Failed to fetch') || m.includes('Load failed')) return 'Không kết nối được tới server. Kiểm tra mạng và địa chỉ project.';
   if (m.startsWith('401')) return 'Sai mật khẩu (APP_SECRET).';
   if (m.includes('link Google')) return 'Không đọc được điểm đến từ link này. Hãy gõ tên hoặc địa chỉ thay cho link.';
+  if (m.includes('định tuyến')) return 'Các dịch vụ tính đường đang chậm hoặc lỗi. Thử lại sau ít phút.';
   if (m.includes('WORKER_RESOURCE_LIMIT') || m.startsWith('546')) return 'Server quá tải khi tính lộ trình dài. Thử điểm đến gần hơn.';
   if (m.includes('không tìm thấy điểm đến')) return 'Không tìm thấy điểm đến. Thử gõ cách khác hoặc dán link Google Maps.';
   return m;
